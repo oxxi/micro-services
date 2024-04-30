@@ -1,0 +1,66 @@
+version: '3.9'
+
+services:
+  golang-cacthus:
+    build:
+      context: ./Backend/Golang
+      dockerfile: Dockerfile
+    ports:
+      - '8080:8080'
+    networks:
+      - cacthus-network
+    restart: always
+    environment:
+      - DB_NAME=db_metrics
+      - DB_PASSWORD=123456789
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_HOST=postgres-cacthus
+      - APP_ENV=PRODUCTION
+    depends_on:
+      - postgres-cacthus
+
+  elixir-cacthus:
+    build:
+      context: ./Backend/Phoenix
+      dockerfile: Dockerfile
+    environment:
+      - API_URL=http://golang-cacthus:8080/
+    ports:
+      - '4000:4000'
+    networks:
+      - cacthus-network
+    depends_on:
+      - golang-cacthus
+
+  frontend-cacthus:
+    build:
+      context: ./FrontEnd
+      dockerfile: Dockerfile
+    environment:
+      - API_URL=ws://elixir-cacthus:4000/ws/websocket?vsn=2.0.0
+      - VITE_API_URL=ws://127.0.0.1:4000/ws/websocket?vsn=2.0.0
+    ports:
+      - '3000:3000'
+    networks:
+      - cacthus-network
+    depends_on:
+      - elixir-cacthus
+
+  postgres-cacthus:
+    image: postgres:14-alpine
+    ports:
+      - 5432:5432
+    networks:
+      - cacthus-network
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=123456789
+      - POSTGRES_DB=db_metrics
+volumes:
+  postgres-data:
+networks:
+  cacthus-network:
+    driver: bridge

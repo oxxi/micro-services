@@ -1,0 +1,5 @@
+_build/
+.elixi_ls/
+deps/
+
+.env
